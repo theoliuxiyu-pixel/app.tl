@@ -1,10 +1,15 @@
 import streamlit as st
 import google.generativeai as genai
+import os
 
-# 使用 Streamlit 的 Secrets (你之後會在雲端設定)
+# 1. 強制確認 Key 是否存在
+if "API_KEY" not in st.secrets:
+    st.error("找不到 API_KEY！請確認你有在 Streamlit Cloud 設定 Secrets。")
+    st.stop()
+
+# 2. 讀取並設定
 api_key = st.secrets["API_KEY"]
 genai.configure(api_key=api_key)
-
 # 自動獲取模型
 def get_model():
     for m in genai.list_models():
