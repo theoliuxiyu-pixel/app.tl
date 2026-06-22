@@ -1,4 +1,2 @@
-# 在 Colab 中新增一個程式碼格子執行：
-with open("requirements.txt", "w") as f:
-    f.write("streamlit\n")
-    f.write("google-generativeai\n")
+streamlit
+google-generativeai
