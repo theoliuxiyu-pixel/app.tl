@@ -2,30 +2,35 @@ import streamlit as st
 import google.generativeai as genai
 import os
 
-# 1. 強制確認 Key 是否存在
-if "API_KEY" not in st.secrets:
-    st.error("找不到 API_KEY！請確認你有在 Streamlit Cloud 設定 Secrets。")
+# 設定頁面標題
+st.title("🤖 毒舌科技評論員")
+
+# 1. 嘗試從 Streamlit Secrets 讀取，如果找不到則嘗試從環境變數讀取
+try:
+    if "API_KEY" in st.secrets:
+        api_key = st.secrets["API_KEY"]
+    else:
+        api_key = os.environ.get("API_KEY")
+        
+    if not api_key:
+        st.error("❌ 找不到 API_KEY！請檢查 Streamlit Cloud 的 Secrets 設定。")
+        st.stop()
+        
+    genai.configure(api_key=api_key)
+    # 不使用 list_models()，改為直接指定模型以提高穩定性
+    model = genai.GenerativeModel("gemini-1.5-flash")
+except Exception as e:
+    st.error(f"❌ 初始化錯誤: {e}")
     st.stop()
 
-# 2. 讀取並設定
-api_key = st.secrets["API_KEY"]
-genai.configure(api_key=api_key)
-# 自動獲取模型
-def get_model():
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            return genai.GenerativeModel(m.name)
-    return None
-
-model = get_model()
-
-st.title("🤖 毒舌科技評論員")
+# 2. UI 介面
 user_input = st.text_input("你想問什麼科技產品？", "例如：最新的折疊手機")
 
 if st.button("開始毒舌分析"):
-    if model:
-        prompt = f"你是一位毒舌科技評論員，請用犀利、幽默的口吻分析：{user_input}"
-        response = model.generate_content(prompt)
-        st.write(response.text)
-    else:
-        st.write("找不到可用模型，請稍後再試。")
+    with st.spinner('正在毒舌分析中...'):
+        try:
+            prompt = f"你是一位毒舌科技評論員，請用犀利、幽默的口吻分析：{user_input}"
+            response = model.generate_content(prompt)
+            st.write(response.text)
+        except Exception as e:
+            st.error(f"生成內容時發生錯誤: {e}")
