@@ -9,8 +9,17 @@ import google.generativeai as genai
 
 # 設定 AI
 genai.configure(api_key="AQ.Ab8RN6J5kA9S5gPoKbjjiIG6eKNZ-kGR7HdGTvgjbPxuQ-PuFw")
-model = genai.GenerativeModel("gemini-1.5-flash")
+# 修改前：
+# model = genai.GenerativeModel("gemini-1.5-flash")
 
+# 修改後（更聰明的寫法）：
+def get_model():
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            return genai.GenerativeModel(m.name)
+    return None
+
+model = get_model()
 st.title("🤖 毒舌科技評論員")
 user_input = st.text_input("你想問什麼科技產品？", "例如：最新的折疊手機")
 
