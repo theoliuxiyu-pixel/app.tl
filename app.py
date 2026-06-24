@@ -26,7 +26,7 @@ st.divider()
 st.subheader("🔒 咪姐的加密罐罐日記")
 
 # 設定密碼 (這裡範例設定為 1234，你可以隨意更改)
-PASSWORD = "I_love_Mimi"
+PASSWORD = "71398426"
 user_password = st.text_input("請輸入查看密碼：", type="password")
 
 if user_password == PASSWORD:
