@@ -8,7 +8,7 @@ genai.configure(api_key=st.secrets["API_KEY"], transport='rest')
 # 2. 使用更直接的模型名稱宣告
 # 我們嘗試使用 'gemini-1.5-flash'，這是目前最推薦的視覺模型
 try:
-    model = model = genai.GenerativeModel("gemini-1.5-pro") 
+    model = model = genai.GenerativeModel("gemini-pro") 
 except Exception as e:
     st.error(f"模型載入失敗: {e}")
 
