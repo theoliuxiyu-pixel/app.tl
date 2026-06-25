@@ -1,40 +1,54 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+from supabase import create_client
 from datetime import datetime, timedelta
-import gspread
 
-# 1. API 設定
-genai.configure(api_key=st.secrets["API_KEY"], transport='rest')
-model = genai.GenerativeModel("gemini-3.5-flash")
+# --- 1. 初始化設定 ---
+# 確保你在 Streamlit Cloud 的 Secrets 設定了這些變數
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
 
+genai.configure(api_key=st.secrets["API_KEY"])
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 st.title("🐱 咪姐的永久秘密基地")
 
-# 2. 連線 Google Sheet (使用公開連結的權限)
-# 你需要先下載 gspread 的認證連結，或者直接改用此處邏輯：
-# 為了簡化，建議你直接在 Streamlit secrets 裡放入你的 Google Sheet 名稱或網址
-client = gspread.service_account(filename="service_account.json") 
-sheet = client.open("咪姐日記").sheet1
-
-# --- AI 分析區塊 ---
-uploaded_file = st.file_uploader("上傳咪姐照片", type=["jpg", "png", "jpeg"])
-if uploaded_file and st.button("翻譯心聲"):
+# --- 2. AI 翻譯區塊 ---
+uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg"])
+if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
-    response = model.generate_content(["傲嬌口吻描述這隻貓的心情", image])
-    st.write(f"### 💬 翻譯官：咪姐說：\n{response.text}")
+    st.image(image, caption="正在觀察咪姐...", use_column_width=True)
+    if st.button("翻譯咪姐心聲"):
+        with st.spinner('咪姐正在靈魂溝通中...'):
+            response = model.generate_content(["請用傲嬌口吻描述這隻貓咪現在的心情。", image])
+            st.write(f"### 💬 翻譯官：咪姐說：\n{response.text}")
 
 st.divider()
 
-# --- 永久儲存留言區塊 ---
-st.subheader("📝 咪姐日記")
+# --- 3. 永久留言板 (Supabase) ---
+st.subheader("📝 罐罐日記")
 
-# 顯示歷史留言
-for row in sheet.get_all_records():
-    st.text(f"[{row['Timestamp']}] {row['Message']}")
+# 讀取資料庫中的所有留言
+response = supabase.table("diary").select("*").order("id", desc=True).execute()
+messages = response.data
 
+for msg in messages:
+    st.write(f"**{msg['timestamp']}**: {msg['message']}")
+
+# 新增留言功能
 new_msg = st.text_input("想對咪姐說什麼？")
 if st.button("獻上敬意"):
     if new_msg:
-        time_str = (datetime.now() + timedelta(hours=8)).strftime("%m/%d %H:%M")
-        sheet.append_row([time_str, new_msg])
+        taiwan_time = (datetime.now() + timedelta(hours=8)).strftime("%m/%d %H:%M")
+        
+        # 寫入 Supabase 資料庫
+        supabase.table("diary").insert({
+            "timestamp": taiwan_time, 
+            "message": new_msg
+        }).execute()
+        
+        # 重新整理顯示新留言
         st.rerun()
