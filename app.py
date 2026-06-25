@@ -1,60 +1,40 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import os
 from datetime import datetime, timedelta
+import gspread
 
-# API 設定
+# 1. API 設定
 genai.configure(api_key=st.secrets["API_KEY"], transport='rest')
 model = genai.GenerativeModel("gemini-3.5-flash")
 
-st.title("🐱 咪姐的秘密心聲與加密日記")
+st.title("🐱 咪姐的永久秘密基地")
 
-# --- 1. AI 分析區塊 ---
-uploaded_file = st.file_uploader("給 AI 看一張咪姐的照片", type=["jpg", "png", "jpeg"])
-if uploaded_file is not None:
+# 2. 連線 Google Sheet (使用公開連結的權限)
+# 你需要先下載 gspread 的認證連結，或者直接改用此處邏輯：
+# 為了簡化，建議你直接在 Streamlit secrets 裡放入你的 Google Sheet 名稱或網址
+client = gspread.service_account(filename="service_account.json") 
+sheet = client.open("咪姐日記").sheet1
+
+# --- AI 分析區塊 ---
+uploaded_file = st.file_uploader("上傳咪姐照片", type=["jpg", "png", "jpeg"])
+if uploaded_file and st.button("翻譯心聲"):
     image = Image.open(uploaded_file).convert("RGB")
-    image.thumbnail((1024, 1024))
-    st.image(image, caption="咪姐觀察中...", width=300)
-    if st.button("翻譯咪姐心聲"):
-        response = model.generate_content(["請用傲嬌口吻描述這隻貓咪現在的心情。", image])
-        st.write(f"### 💬 咪姐說：\n{response.text}")
+    response = model.generate_content(["傲嬌口吻描述這隻貓的心情", image])
+    st.write(f"### 💬 翻譯官：咪姐說：\n{response.text}")
 
 st.divider()
 
-# --- 2. 加密留言板與圖片日記 ---
-st.subheader("🔒 咪姐的加密罐罐日記")
+# --- 永久儲存留言區塊 ---
+st.subheader("📝 咪姐日記")
 
-# 設定密碼 (這裡範例設定為 1234，你可以隨意更改)
-PASSWORD = "71398426"
-user_password = st.text_input("請輸入查看密碼：", type="password")
+# 顯示歷史留言
+for row in sheet.get_all_records():
+    st.text(f"[{row['Timestamp']}] {row['Message']}")
 
-if user_password == PASSWORD:
-    st.success("密碼正確，歡迎進入咪姐的秘密基地！")
-    
-    # 留言功能
-    new_msg = st.text_input("想對咪姐說什麼？")
-    # 留言圖片上傳
-    msg_img = st.file_uploader("也可以附上一張紀錄照：", type=["jpg", "png"])
-    
-    if st.button("送出留言"):
-        taiwan_time = datetime.now() + timedelta(hours=8)
-        now = taiwan_time.strftime("%m/%d %H:%M")
-        
-        # 處理圖片保存
-        img_filename = "none"
-        if msg_img:
-            img_filename = f"msg_{int(datetime.now().timestamp())}.jpg"
-            msg_img_data = Image.open(msg_img)
-            msg_img_data.save(img_filename)
-            
-        with open("diary.txt", "a", encoding="utf-8") as f:
-            f.write(f"\n[{now}] 粉絲說: {new_msg} (圖片: {img_filename})")
+new_msg = st.text_input("想對咪姐說什麼？")
+if st.button("獻上敬意"):
+    if new_msg:
+        time_str = (datetime.now() + timedelta(hours=8)).strftime("%m/%d %H:%M")
+        sheet.append_row([time_str, new_msg])
         st.rerun()
-
-    # 顯示歷史紀錄
-    if os.path.exists("diary.txt"):
-        with open("diary.txt", "r", encoding="utf-8") as f:
-            st.text_area("歷史紀錄", value=f.read(), height=200, disabled=True)
-else:
-    st.warning("請輸入正確密碼以查看與留言。")
