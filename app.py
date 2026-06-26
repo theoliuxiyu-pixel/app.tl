@@ -63,13 +63,36 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, use_column_width=True)
     if st.button("翻譯咪姐心聲"):
-        with st.spinner('咪姐正在傳送靈魂訊號...'):
+        with st.spinner('翻譯官思考中...'):
             weather_info = get_weather()
             tone = "極度傲嬌、毒舌、不耐煩" if any(x in weather_info for x in ["雨", "冷"]) else "傲嬌、愛理不理"
-            prompt = f"請用{tone}口吻描述貓咪心情。今日天氣是{weather_info}，請將天氣融入回覆中。"
+            prompt = f"""
+請用{tone}的口吻描述貓咪心情。
+今日天氣是{weather_info}。
+
+請嚴格按照以下格式回覆：
+【傲嬌指數】：X/10 (請給予 1 到 10 的傲嬌分數，越傲嬌分數越高)
+【翻譯心聲】：(這裡放你傲嬌的描述)
+"""
+                        response = model.generate_content([prompt, image])
+            raw_text = response.text
+            st.write(f"### 💬 咪姐說：\n{raw_text}")
             
+            # 從 AI 的回覆中提取分數 (假設 AI 乖乖照格式回覆)
+            try:
+                score = int(raw_text.split("【傲嬌指數】：")[1].split("/10")[0])
+                time_str = datetime.now().strftime("%m/%d %H:%M")
+                
+                # 自動存入心情紀錄表
+                supabase.table("mood_log").insert({
+                    "timestamp": time_str, 
+                    "mood_score": score,
+                    "message": raw_text
+                }).execute()
+            except:
+                pass # 忽略格式錯誤
             response = model.generate_content([prompt, image])
-            st.write(f"### 💬 咪姐說：\n{response.text}")
+            st.write(f"### 💬 翻譯官：咪姐說：\n{response.text}")
 
 st.divider()
 
@@ -87,3 +110,9 @@ if st.button("獻上敬意"):
         time_str = (datetime.now() + timedelta(hours=8)).strftime("%m/%d %H:%M")
         supabase.table("diary").insert({"timestamp": time_str, "message": new_msg}).execute()
         st.rerun()
+st.subheader("📊 咪姐傲嬌指數走勢")
+mood_data = supabase.table("mood_log").select("mood_score").execute()
+if mood_data.data:
+    import pandas as pd
+    df = pd.DataFrame(mood_data.data)
+    st.line_chart(df["mood_score"])
