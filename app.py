@@ -15,7 +15,7 @@ try:
     key = st.secrets["SUPABASE_KEY"]
     supabase = create_client(url, key)
     genai.configure(api_key=st.secrets["API_KEY"])
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-3.5-flash")
 except Exception as e:
     st.error("設定檔讀取失敗，請檢查 Streamlit Secrets 是否設定正確。")
 
