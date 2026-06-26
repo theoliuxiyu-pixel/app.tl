@@ -4,7 +4,7 @@ import requests
 from PIL import Image
 from supabase import create_client
 from datetime import datetime, timedelta
-
+import time
 # --- 0. 密碼鎖防護機制 ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -61,6 +61,9 @@ uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg
 
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
+    # 在 Image.open 之後加入壓縮
+image = Image.open(uploaded_file).convert("RGB")
+image.thumbnail((1024, 1024)) # 將圖片縮小到 1024px 以內，保留細節但大幅減少 Token 消耗
     st.image(image, use_column_width=True)
     if st.button("翻譯咪姐心聲"):
         with st.spinner('翻譯官思考中...'):
