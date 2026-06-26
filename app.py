@@ -39,7 +39,7 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="咪姐正在看你...", use_column_width=True)
     if st.button("翻譯咪姐心聲"):
-        with st.spinner('咪姐正在傳送靈魂訊號...'):
+        with st.spinner('翻譯官思考中...'):
             weather_info = get_weather()
             # 條件式語氣判斷
             if "雨" in weather_info or "冷" in weather_info:
@@ -51,9 +51,9 @@ if uploaded_file:
             
             try:
                 response = model.generate_content([prompt, image])
-                st.write(f"### 💬 咪姐說：\n{response.text}")
+                st.write(f"### 💬 翻譯官：咪姐說：\n{response.text}")
             except Exception as e:
-                st.error(f"AI 罷工了：{e}")
+                st.error(f"翻譯官罷工了：{e}")
 
 st.divider()
 
