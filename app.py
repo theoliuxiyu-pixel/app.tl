@@ -4,28 +4,40 @@ import requests
 from PIL import Image
 from supabase import create_client
 from datetime import datetime, timedelta
-import time
-# --- 0. 密碼鎖防護機制 ---
+import timeimport streamlit as st
+from datetime import datetime, timedelta
+
+# --- 0. 密碼鎖與每日重置機制 ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
     st.session_state.attempts = 0
     st.session_state.lockout_time = None
+    st.session_state.last_login_date = None
 
+# 1. 每日重置檢查 (午夜跨日即重置)
+if st.session_state.authenticated:
+    if st.session_state.last_login_date != datetime.now().date():
+        st.session_state.authenticated = False # 強制鎖定
+        st.rerun()
+
+# 2. 錯誤鎖定檢查
 if st.session_state.attempts >= 3:
     if st.session_state.lockout_time and (datetime.now() - st.session_state.lockout_time) < timedelta(hours=24):
-        st.error("❌ 你已經失敗三次，請 24 小時後再來！")
+        st.error("❌ 你已經失敗三次，請 24 小時後再來挑戰！")
         st.stop()
     else:
         st.session_state.attempts = 0
         st.session_state.lockout_time = None
 
+# 3. 登入介面
 if not st.session_state.authenticated:
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼才能進入", type="password")
     if st.button("解鎖"):
-        if password == "71398426": # 請設定你的密碼
+        if password == "71398426": 
             st.session_state.authenticated = True
             st.session_state.attempts = 0
+            st.session_state.last_login_date = datetime.now().date() # 紀錄今天的日期
             st.rerun()
         else:
             st.session_state.attempts += 1
@@ -34,6 +46,7 @@ if not st.session_state.authenticated:
             st.error(f"密碼錯誤！剩餘機會: {3 - st.session_state.attempts}")
     st.stop()
 
+# --- (以下開始才是你的 AI 與資料庫功能) ---
 # --- 1. 設定與初始化 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 st.title("🐱 咪姐的永久秘密基地")
