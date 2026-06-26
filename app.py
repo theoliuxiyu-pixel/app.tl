@@ -74,7 +74,7 @@ if uploaded_file:
 【傲嬌指數】：X/10 (請給予 1 到 10 的傲嬌分數，越傲嬌分數越高)
 【翻譯心聲】：(這裡放你傲嬌的描述)
 """
-                        response = model.generate_content([prompt, image])
+            response = model.generate_content([prompt, image])
             raw_text = response.text
             st.write(f"### 💬 咪姐說：\n{raw_text}")
             
