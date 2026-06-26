@@ -65,7 +65,7 @@ if uploaded_file:
 image = Image.open(uploaded_file).convert("RGB")
 image.thumbnail((1024, 1024)) # 將圖片縮小到 1024px 以內，保留細節但大幅減少 Token 消耗
 st.image(image, use_column_width=True)
-    if st.button("翻譯咪姐心聲"):
+if st.button("翻譯咪姐心聲"):
         with st.spinner('翻譯官思考中...'):
             weather_info = get_weather()
             tone = "極度傲嬌、毒舌、不耐煩" if any(x in weather_info for x in ["雨", "冷"]) else "傲嬌、愛理不理"
