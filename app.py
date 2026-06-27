@@ -4,8 +4,8 @@ import requests
 from PIL import Image
 from supabase import create_client
 from datetime import datetime, timedelta
-import timeimport streamlit as st
-from datetime import datetime, timedelta
+import time
+import streamlit as st
 
 # --- 0. 密碼鎖與每日重置機制 ---
 if "authenticated" not in st.session_state:
