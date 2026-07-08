@@ -75,14 +75,14 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, use_column_width=True)
     if st.button("翻譯咪姐心聲"):
-        with st.spinner('翻譯官思考中...'):
+        with st.spinner('咪姐正在傳送靈魂訊號...'):
             weather_info = get_weather()
             tone = "極度傲嬌、毒舌、不耐煩" if any(x in weather_info for x in ["雨", "冷"]) else "傲嬌、愛理不理"
             prompt = f"請用{tone}口吻描述貓咪心情。今日天氣是{weather_info}。請嚴格按照以下格式回覆：\n【傲嬌指數】：X/10\n【翻譯心聲】：(內容)"
             
             try:
                 response = model.generate_content([prompt, image])
-                st.write(f"### 💬 翻譯官：咪姐說：\n{response.text}")
+                st.write(f"### 💬 咪姐說：\n{response.text}")
             except Exception as e:
                 st.warning("咪姐現在不想理人（API 限制），請稍後再試！")
 
