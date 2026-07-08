@@ -56,7 +56,7 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 genai.configure(api_key=st.secrets["API_KEY"])
-model = genai.GenerativeModel("gemini-1.5-flash") # 確保使用正確模型名稱
+model = genai.GenerativeModel("gemini-3.5-flash") # 確保使用正確模型名稱
 
 def get_weather(city="Zhongli"):
     try:
