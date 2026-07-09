@@ -4,99 +4,91 @@ import requests
 from PIL import Image
 from supabase import create_client
 from datetime import datetime, timedelta
-import time
 
 # --- 0. 初始化設定 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 
+# 初始化 Session State
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
     st.session_state.attempts = 0
     st.session_state.lockout_time = None
     st.session_state.last_login_date = None
 
-# --- 1. 安檢防護門 (每日重置 & 錯誤鎖定) ---
-# 每日午夜重置
+# --- 1. 安檢防護門 (台灣時間 UTC+8) ---
+def get_tw_date(): return (datetime.utcnow() + timedelta(hours=8)).date()
+
 if st.session_state.authenticated:
-    if st.session_state.last_login_date != datetime.now().date():
+    if st.session_state.last_login_date != get_tw_date():
         st.session_state.authenticated = False
         st.rerun()
 
-# 錯誤三次鎖定 24 小時
 if st.session_state.attempts >= 3:
-    if st.session_state.lockout_time and (datetime.now() - st.session_state.lockout_time) < timedelta(hours=24):
-        st.error("❌ 你已經失敗三次，請 24 小時後再來挑戰！")
+    if st.session_state.lockout_time and (datetime.utcnow() + timedelta(hours=8) - st.session_state.lockout_time) < timedelta(hours=24):
+        st.error("❌ 嘗試次數過多，請 24 小時後再來。")
         st.stop()
     else:
         st.session_state.attempts = 0
         st.session_state.lockout_time = None
 
-# 登入介面
 if not st.session_state.authenticated:
     st.title("🔒 咪姐秘密基地")
-    password = st.text_input("輸入密碼才能進入", type="password")
+    password = st.text_input("輸入密碼", type="password")
     if st.button("解鎖"):
-        if password == "71398426":
+        if password == "Meow123":
             st.session_state.authenticated = True
-            st.session_state.attempts = 0
-            st.session_state.last_login_date = datetime.now().date()
+            st.session_state.last_login_date = get_tw_date()
             st.rerun()
         else:
             st.session_state.attempts += 1
             if st.session_state.attempts >= 3:
-                st.session_state.lockout_time = datetime.now()
-            st.error(f"密碼錯誤！剩餘機會: {3 - st.session_state.attempts}")
+                st.session_state.lockout_time = datetime.utcnow() + timedelta(hours=8)
+            st.error("密碼錯誤")
     st.stop()
 
-# --- 2. 秘密基地內容 ---
-st.title("🐱 咪姐的永久秘密基地")
-
-# 初始化工具
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase = create_client(url, key)
+# --- 2. 核心功能與資料庫 ---
+supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
-model = genai.GenerativeModel("gemini-3.5-flash") # 確保使用正確模型名稱
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-def get_weather(city="Zhongli"):
+# 好感度邏輯：統計日記留言數
+def get_loyalty_score():
     try:
-        api_key = st.secrets["WEATHER_API_KEY"]
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=zh_tw"
-        res = requests.get(url).json()
-        if res.get("cod") == 200:
-            return f"{res['weather'][0]['description']}, 氣溫 {res['main']['temp']}°C"
-    except: return "晴朗涼爽"
-    return "晴朗涼爽"
+        data = supabase.table("diary").select("id", count='exact').execute()
+        return data.count if data.count else 0
+    except: return 0
 
-st.subheader("📸 咪姐心情翻譯機")
+score = get_loyalty_score()
+
+# 動態風格 CSS
+def apply_theme(s):
+    bg = "#ffebf0" if s >= 15 else ("#faedcd" if s >= 6 else "#f0f0f0")
+    color = "#ffafcc" if s >= 15 else ("#d4a373" if s >= 6 else "#333333")
+    st.markdown(f"""<style>.stApp {{ background-color: {bg}; }} h1, h2 {{ color: {color}; }}</style>""", unsafe_allow_html=True)
+
+apply_theme(score)
+
+# --- 3. 頁面內容 ---
+st.title("🐱 咪姐的永久秘密基地")
+st.write(f"與咪姐的好感度：**{score}** 點")
+
 uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg"])
-
-if uploaded_file is not None:
+if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, use_column_width=True)
     if st.button("翻譯咪姐心聲"):
-        with st.spinner('咪姐正在傳送靈魂訊號...'):
-            weather_info = get_weather()
-            tone = "極度傲嬌、毒舌、不耐煩" if any(x in weather_info for x in ["雨", "冷"]) else "傲嬌、愛理不理"
-            prompt = f"請用{tone}口吻描述貓咪心情。今日天氣是{weather_info}。請嚴格按照以下格式回覆：\n【傲嬌指數】：X/10\n【翻譯心聲】：(內容)"
-            
-            try:
-                response = model.generate_content([prompt, image])
-                st.write(f"### 💬 咪姐說：\n{response.text}")
-            except Exception as e:
-                st.warning("咪姐現在不想理人（API 限制），請稍後再試！")
+        tone = "溫柔且親暱" if score >= 15 else ("傲嬌但有點害羞" if score >= 6 else "極度傲嬌、毒舌")
+        prompt = f"你是一隻貓咪咪姐，目前我們的好感度是{score}。請用{tone}口吻描述這張照片的心情。"
+        response = model.generate_content([prompt, image])
+        st.write(f"### 💬 咪姐說：\n{response.text}")
 
 st.divider()
 st.subheader("📝 罐罐日記")
-try:
-    response = supabase.table("diary").select("*").order("id", desc=True).execute()
-    for msg in response.data:
-        st.write(f"**{msg.get('timestamp')}**: {msg.get('message')}")
-except: st.error("日記本暫時打不開")
-
 new_msg = st.text_input("想對咪姐說什麼？")
 if st.button("獻上敬意"):
     if new_msg:
-        time_str = (datetime.now() + timedelta(hours=8)).strftime("%m/%d %H:%M")
-        supabase.table("diary").insert({"timestamp": time_str, "message": new_msg}).execute()
+        supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": new_msg}).execute()
         st.rerun()
+
+data = supabase.table("diary").select("*").order("id", desc=True).execute().data
+for msg in data: st.write(f"**{msg.get('timestamp')}**: {msg.get('message')}")
