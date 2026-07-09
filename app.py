@@ -48,17 +48,28 @@ score = get_loyalty_score()
 
 # --- 3. UI 美化與風格 (對比度優化) ---
 def apply_theme(s):
+    # 設定色盤
     if s < 6: bg, txt, btn = "#f0f0f0", "#212529", "#333333"
     elif s < 15: bg, txt, btn = "#faedcd", "#5f4339", "#d4a373"
     else: bg, txt, btn = "#ffebf0", "#880e4f", "#ffafcc"
         
+    # 加入 unsafe_allow_html=True 並確保 CSS 樣式完整
     st.markdown(f"""
         <style>
-        .stApp {{ background-color: {bg}; color: {txt}; }}
-        h1, h2, h3, p, label, .stMarkdown, .stText {{ color: {txt} !important; }}
-        div.stButton > button {{ background-color: {btn} !important; color: white !important; border: none; }}
-        div[data-testid="stFileUploadDropzone"] {{ border: 2px dashed {txt} !important; background: rgba(255,255,255,0.2); }}
-        input {{ border: 1px solid {txt} !important; }}
+        [data-testid="stAppViewContainer"] {{
+            background-color: {bg} !important;
+        }}
+        h1, h2, h3, p, label, .stMarkdown, .stText {{
+            color: {txt} !important;
+        }}
+        div.stButton > button {{
+            background-color: {btn} !important;
+            color: white !important;
+        }}
+        [data-testid="stFileUploadDropzone"] {{
+            background-color: rgba(255, 255, 255, 0.3) !important;
+            border: 2px dashed {txt} !important;
+        }}
         </style>
     """, unsafe_allow_html=True)
 
