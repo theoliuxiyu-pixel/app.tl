@@ -15,7 +15,7 @@ if "authenticated" not in st.session_state:
     st.session_state.lockout_time = None
     st.session_state.last_login_date = None
 
-# --- 1. 安檢防護門 (台灣時間 UTC+8) ---
+# --- 1. 安檢防護門 (台灣時間) ---
 def get_tw_date(): return (datetime.utcnow() + timedelta(hours=8)).date()
 
 if st.session_state.authenticated:
@@ -23,6 +23,7 @@ if st.session_state.authenticated:
         st.session_state.authenticated = False
         st.rerun()
 
+# 錯誤三次鎖定
 if st.session_state.attempts >= 3:
     if st.session_state.lockout_time and (datetime.utcnow() + timedelta(hours=8) - st.session_state.lockout_time) < timedelta(hours=24):
         st.error("❌ 嘗試次數過多，請 24 小時後再來。")
@@ -51,7 +52,6 @@ supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# 好感度邏輯：統計日記留言數
 def get_loyalty_score():
     try:
         data = supabase.table("diary").select("id", count='exact').execute()
@@ -60,11 +60,23 @@ def get_loyalty_score():
 
 score = get_loyalty_score()
 
-# 動態風格 CSS
+# 動態風格 CSS (已修正對比度)
 def apply_theme(s):
-    bg = "#ffebf0" if s >= 15 else ("#faedcd" if s >= 6 else "#f0f0f0")
-    color = "#ffafcc" if s >= 15 else ("#d4a373" if s >= 6 else "#333333")
-    st.markdown(f"""<style>.stApp {{ background-color: {bg}; }} h1, h2 {{ color: {color}; }}</style>""", unsafe_allow_html=True)
+    # 背景色與文字色的高對比組合
+    if s < 6:
+        bg, txt, accent = "#f0f0f0", "#212529", "#333333"
+    elif s < 15:
+        bg, txt, accent = "#faedcd", "#5f4339", "#d4a373"
+    else:
+        bg, txt, accent = "#ffebf0", "#880e4f", "#ffafcc"
+        
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: {bg}; color: {txt}; }}
+        h1, h2, h3, p, label, .stMarkdown, .stText {{ color: {txt} !important; }}
+        input {{ color: {txt} !important; }}
+        </style>
+    """, unsafe_allow_html=True)
 
 apply_theme(score)
 
@@ -78,9 +90,11 @@ if uploaded_file:
     st.image(image, use_column_width=True)
     if st.button("翻譯咪姐心聲"):
         tone = "溫柔且親暱" if score >= 15 else ("傲嬌但有點害羞" if score >= 6 else "極度傲嬌、毒舌")
-        prompt = f"你是一隻貓咪咪姐，目前我們的好感度是{score}。請用{tone}口吻描述這張照片的心情。"
-        response = model.generate_content([prompt, image])
-        st.write(f"### 💬 咪姐說：\n{response.text}")
+        prompt = f"你是一隻貓咪咪姐，好感度{score}。請用{tone}口吻描述照片心情。格式：【傲嬌指數】：X/10 \n【翻譯心聲】：(描述)"
+        try:
+            response = model.generate_content([prompt, image])
+            st.write(f"### 💬 咪姐說：\n{response.text}")
+        except: st.warning("咪姐現在不想理人。")
 
 st.divider()
 st.subheader("📝 罐罐日記")
