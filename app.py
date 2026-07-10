@@ -5,7 +5,16 @@ import random
 from supabase import create_client
 from datetime import datetime, timedelta
 from streamlit_cookies_controller import CookieController 
-
+# --- 定義一個寫入日記的小幫手 ---
+def add_to_diary(message):
+    try:
+        supabase.table("diary").insert({
+            "timestamp": datetime.utcnow().strftime("%m/%d %H:%M"), 
+            "message": message
+        }).execute()
+        st.rerun() # 寫完自動刷新
+    except Exception as e:
+        st.error(f"寫入失敗: {e}")
 # --- 0. 初始化 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -106,6 +115,18 @@ new_msg = st.text_input("想對咪姐說什麼？(時區：UTC+0)")
 if st.button("獻上敬意") and new_msg:
     supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": new_msg}).execute()
     st.rerun()
+    # --- Emoji 按鈕區塊 ---
+cols1 = st.columns(4)
+emojis_mood = ["❤️", "✨", "🥰", "🐱"]
+for i, emoji in enumerate(emojis_mood):
+    if cols1[i].button(emoji):
+        add_to_diary(f"送給咪姐一個 {emoji}") # 直接呼叫小幫手！
+
+cols2 = st.columns(4)
+emojis_action = ["🐟", "💤", "🧶", "🐾"]
+for i, emoji in enumerate(emojis_action):
+    if cols2[i].button(emoji):
+        add_to_diary(f"送給咪姐一個 {emoji}") # 真的只要一行！。
 # --- 隱藏式管理員入口 ---
 # 讀取網址參數，例如: https://app-tl.streamlit.app/?admin=true
 query_params = st.query_params
