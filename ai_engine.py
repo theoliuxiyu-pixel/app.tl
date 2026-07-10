@@ -25,7 +25,7 @@ def create_mimi_icon(uploaded_file, output_path="mimi_icon.png"):
     output.save(output_path, "PNG")
 
 def get_ai_response(prompt, img_bytes=None):
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-3.5-flash")
     system_prompt = "你是咪姐，傲嬌貓咪。用傲嬌口吻評論。"
     content = [system_prompt + prompt]
     if img_bytes:
