@@ -106,3 +106,20 @@ new_msg = st.text_input("想對咪姐說什麼？")
 if st.button("獻上敬意") and new_msg:
     supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": new_msg}).execute()
     st.rerun()
+# --- 管理員專區 (讀取 Secrets) ---
+st.sidebar.divider()
+st.sidebar.subheader("👑 管理員專區")
+admin_input = st.sidebar.text_input("輸入管理員密鑰", type="password")
+
+# 從 st.secrets 讀取，如果沒設預設為空字串
+stored_pass = st.secrets.get("ADMIN_PASSWORD", "")
+
+if admin_input and admin_input == stored_pass:
+    st.sidebar.success("管理員已驗證")
+    if st.sidebar.checkbox("查看登入紀錄"):
+        st.subheader("📊 IP 登入紀錄")
+        try:
+            logs = supabase.table("auth_log").select("*").order("last_attempt_time", desc=True).execute().data
+            st.table(logs)
+        except Exception as e:
+            st.error(f"讀取失敗: {e}")
