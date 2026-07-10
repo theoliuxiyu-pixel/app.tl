@@ -6,15 +6,6 @@ from supabase import create_client
 from datetime import datetime, timedelta
 from streamlit_cookies_controller import CookieController 
 # --- 定義一個寫入日記的小幫手 ---
-def add_to_diary(message):
-    try:
-        supabase.table("diary").insert({
-            "timestamp": datetime.utcnow().strftime("%m/%d %H:%M"), 
-            "message": message
-        }).execute()
-        st.rerun() # 寫完自動刷新
-    except Exception as e:
-        st.error(f"寫入失敗: {e}")
 # --- 0. 初始化 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -27,6 +18,16 @@ if "expiry_days" not in st.session_state:
 def get_user_ip():
     try: return requests.get('https://api.ipify.org', timeout=2).text
     except: return "unknown"
+def add_to_diary(message):
+    try:
+        supabase.table("diary").insert({
+            "timestamp": datetime.utcnow().strftime("%m/%d %H:%M"), 
+            "message": message
+        }).execute()
+        st.rerun() # 寫完自動刷新
+    except Exception as e:
+        st.error(f"寫入失敗: {e}")
+
 
 # --- 1. 認證與冷卻系統 ---
 def check_auth_and_cooldown():
