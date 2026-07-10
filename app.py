@@ -1,7 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-import requests
-from PIL import Image
 from supabase import create_client
 from datetime import datetime, timedelta
 
@@ -14,7 +12,7 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
     st.session_state.last_login_date = None
 
-# --- 1. 認證邏輯 ---
+# --- 1. 認證檢查 ---
 def check_auth():
     if not st.session_state.authenticated: return False
     if st.session_state.last_login_date != get_tw_date():
@@ -38,6 +36,7 @@ supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
 model = genai.GenerativeModel("gemini-1.5-flash")
 
+# 從資料庫計算好感度 (留言數)
 def get_loyalty_score():
     try:
         data = supabase.table("diary").select("id", count='exact').execute()
@@ -46,44 +45,23 @@ def get_loyalty_score():
 
 score = get_loyalty_score()
 
-# --- 3. 強制覆蓋式 CSS ---
-def apply_theme(s):
-    if s < 6: bg, txt, btn = "#f0f0f0", "#212529", "#333333"
-    elif s < 15: bg, txt, btn = "#faedcd", "#5f4339", "#d4a373"
-    else: bg, txt, btn = "#ffebf0", "#880e4f", "#ffafcc"
-        
-    st.markdown(f"""
-        <style>
-        /* 強制設定背景顏色 */
-        .stApp, [data-testid="stAppViewContainer"], [data-testid="stMainBlockContainer"] {{
-            background-color: {bg} !important;
-        }}
-        /* 文字與元件色彩 */
-        h1, h2, h3, p, label, .stMarkdown, .stText, .stTextInput {{ color: {txt} !important; }}
-        div.stButton > button {{ background-color: {btn} !important; color: white !important; border: none; }}
-        [data-testid="stFileUploadDropzone"] {{ border: 2px dashed {txt} !important; background: rgba(255,255,255,0.2); }}
-        input {{ border: 1px solid {txt} !important; color: {txt} !important; }}
-        </style>
-    """, unsafe_allow_html=True)
-
-apply_theme(score)
-
-# --- 4. 頁面顯示 ---
+# --- 3. 頁面顯示 ---
 st.title("🐱 咪姐的永久秘密基地")
-st.write(f"與咪姐的好感度：**{score}** 點")
+st.write(f"目前與咪姐的好感度：**{score}** 點")
 
+# 圖片翻譯
 uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg"])
 if uploaded_file:
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, use_column_width=True)
     if st.button("翻譯咪姐心聲"):
         tone = "溫柔且親暱" if score >= 15 else ("傲嬌但有點害羞" if score >= 6 else "極度傲嬌、毒舌")
-        prompt = f"你是一隻貓咪咪姐，好感度{score}。用{tone}口吻描述照片心情。格式：【傲嬌指數】：X/10 \n【翻譯心聲】：(描述)"
+        prompt = f"你是一隻貓咪咪姐，好感度{score}。用{tone}口吻描述照片。格式：【傲嬌指數】：X/10 \n【翻譯心聲】：(描述)"
         try:
-            response = model.generate_content([prompt, image])
+            # 簡化處理，直接讀取檔案串流
+            response = model.generate_content([prompt, uploaded_file.getvalue()])
             st.write(f"### 💬 咪姐說：\n{response.text}")
         except: st.warning("咪姐現在不想理人。")
 
+# 日記區
 st.divider()
 st.subheader("📝 罐罐日記")
 new_msg = st.text_input("想對咪姐說什麼？")
