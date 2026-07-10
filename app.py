@@ -44,3 +44,8 @@ if st.button("存入日記"): add_to_diary(text); st.rerun()
 
 for log in get_recent_logs(): st.write(f"[{log['timestamp']}] {log['message']}")
 if st.button("登出"): set_auth(False); st.rerun()
+    from weather import get_weather_commentary
+
+with st.expander("🌤️ 咪姐天氣預報"):
+    if st.button("查看今天天氣"):
+        st.write(f"🐱 咪姐說：{get_weather_commentary()}")
