@@ -102,7 +102,7 @@ with st.container(height=300):
         st.divider()
 
 # 輸入區
-new_msg = st.text_input("想對咪姐說什麼？")
+new_msg = st.text_input("想對咪姐說什麼？(時區：UTC+0)")
 if st.button("獻上敬意") and new_msg:
     supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": new_msg}).execute()
     st.rerun()
