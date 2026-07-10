@@ -26,7 +26,7 @@ if not check_auth():
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼", type="password")
     if st.button("解鎖"):
-        if password == "7139426":
+        if password == "71398426":
             st.session_state.authenticated = True
             st.session_state.last_login_date = get_tw_date()
             st.rerun()
