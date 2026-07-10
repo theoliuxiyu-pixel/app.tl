@@ -70,7 +70,6 @@ with st.expander("🥊 挑戰咪姐猜拳"):
         else: st.error("嗚嗚，咪姐贏了！")
 
 # Emoji 互動區
-st.write("DEBUG: 正在嘗試渲染 Emoji 選單...")
 st.subheader("💬 與咪姐互動")
 with st.popover("😊 送個表情給咪姐"):
     cols1 = st.columns(4)
