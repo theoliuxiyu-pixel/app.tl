@@ -3,7 +3,7 @@ import google.generativeai as genai
 import requests
 from supabase import create_client
 from datetime import datetime, timedelta
-from cookies_controller import Controller
+from streamlit_cookies_controller import Controller
 
 # --- 0. 初始化 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
