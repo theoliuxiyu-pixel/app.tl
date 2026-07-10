@@ -29,7 +29,7 @@ if not is_logged_in():
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼", type="password")
     if st.button("解鎖"):
-        if password == "Meow123":
+        if password == "71398426":
             st.session_state.authenticated = True
             st.session_state.last_login = get_tw_date()
             st.rerun()
