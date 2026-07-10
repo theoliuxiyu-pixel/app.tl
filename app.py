@@ -93,7 +93,40 @@ if uploaded_file and st.button("翻譯咪姐心聲"):
     prompt = f"你是一隻貓咪咪姐，好感度{score}，階級{rank}。用傲嬌口吻描述照片。"
     res = model.generate_content([prompt, uploaded_file.getvalue()])
     st.write(f"### 💬 咪姐說：\n{res.text}")
+st.divider()
+st.subheader("🥊 咪姐猜拳大賽")
+st.write("贏了咪姐，好感度加 1！")
 
+# 定義選項
+options = ["剪刀", "石頭", "布"]
+user_choice = st.radio("你出什麼？", options, horizontal=True)
+
+if st.button("確認出拳"):
+    # 讓 Gemini 隨機決定 (透過 Python 的 random 模組)
+    import random
+    mi_choice = random.choice(options)
+    st.write(f"咪姐出了：**{mi_choice}**")
+    
+    # 判斷勝負
+    win = False
+    if (user_choice == "剪刀" and mi_choice == "布") or \
+       (user_choice == "石頭" and mi_choice == "剪刀") or \
+       (user_choice == "布" and mi_choice == "石頭"):
+        win = True
+        st.success("🎉 你贏了！咪姐對你好感度提升！")
+    elif user_choice == mi_choice:
+        st.info("平手！再接再厲。")
+    else:
+        st.error("嗚嗚，咪姐贏了！")
+        
+    # 如果贏了，存入資料庫
+    if win:
+        supabase.table("diary").insert({
+            "timestamp": datetime.now().strftime("%m/%d %H:%M"), 
+            "message": "在猜拳中贏過了咪姐，獲得好感度！"
+        }).execute()
+        # 這裡會自動刷新頁面，好感度數字會自動更新
+        st.rerun()
 st.divider()
 st.subheader("📝 罐罐日記")
 new_msg = st.text_input("想對咪姐說什麼？")
