@@ -109,7 +109,7 @@ if st.button("獻上敬意") and new_msg:
 # --- 隱藏式管理員入口 ---
 # 讀取網址參數，例如: https://app-tl.streamlit.app/?admin=true
 query_params = st.query_params
-if query_params.get("tl") =="y":
+if query_params.get("admin"="true":
     
     st.sidebar.divider()
     st.sidebar.subheader("👑 管理員專區")
