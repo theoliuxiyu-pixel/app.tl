@@ -3,82 +3,76 @@ import google.generativeai as genai
 import requests
 from supabase import create_client
 from datetime import datetime, timedelta
+from cookies_controller import Controller
 
-# --- 0. 設定 ---
+# --- 0. 初始化 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
+cookies = Controller()
 
-# 取得使用者真實 IP
+if "expiry_days" not in st.session_state:
+    st.session_state.expiry_days = 30
+
 def get_user_ip():
-    try:
-        # 使用公開 API 取得 IP
-        return requests.get('https://api.ipify.org').text
-    except:
-        return "unknown"
+    try: return requests.get('https://api.ipify.org', timeout=2).text
+    except: return "unknown"
 
-user_ip = get_user_ip()
-
-# --- 1. 冷卻檢查邏輯 (基於 IP) ---
-def check_supabase_auth():
-    # 查詢該 IP 的狀態
+# --- 1. 認證與冷卻系統 ---
+def check_auth_and_cooldown():
+    if cookies.get("is_authenticated") == "True":
+        return True
+    
+    user_ip = get_user_ip()
     res = supabase.table("auth_log").select("status, last_attempt_time").eq("session_id", user_ip).execute()
     
     if len(res.data) > 0:
         row = res.data[0]
-        # 如果已經解鎖過
-        if row['status'] == True:
-            return True
-        
-        # 檢查是否在 10 分鐘冷卻內
+        if row['status'] == True: return True
         if row['last_attempt_time']:
-            # 解析資料庫時間
             last_time = datetime.fromisoformat(row['last_attempt_time'].replace('Z', '+00:00'))
-            # 轉換為本地時間比對
-            if datetime.now(last_time.tzinfo) - last_time < timedelta(minutes=10):
-                st.error(f"❌ 偵測到多次失敗嘗試，IP: {user_ip} 暫時鎖定 10 分鐘。")
+            if datetime.now(last_time.tzinfo) - last_time < timedelta(minutes=15):
+                st.error("❌ 嘗試次數過多，IP 已暫時冷卻 15 分鐘。")
                 st.stop()
     return False
 
 # --- 2. 登入介面 ---
-if not check_supabase_auth():
+if not check_auth_and_cooldown():
     st.title("🔒 咪姐秘密基地")
+    st.session_state.expiry_days = st.number_input("設定記住我的天數：", min_value=1, max_value=365, value=st.session_state.expiry_days)
     password = st.text_input("輸入密碼", type="password")
+    remember_me = st.checkbox(f"記住我 ({st.session_state.expiry_days}天內免登入)")
     
     if st.button("解鎖"):
         if password == "71398426":
-            # 成功：清除冷卻狀態
-            supabase.table("auth_log").upsert({
-                "session_id": user_ip,
-                "status": True,
-                "last_attempt_time": None
-            }).execute()
+            expiry = st.session_state.expiry_days if remember_me else None
+            cookies.set("is_authenticated", "True", expiry_days=expiry)
+            supabase.table("auth_log").upsert({"session_id": get_user_ip(), "status": True, "last_attempt_time": None}).execute()
             st.rerun()
         else:
-            # 失敗：記錄當前時間
-            supabase.table("auth_log").upsert({
-                "session_id": user_ip,
-                "status": False,
-                "last_attempt_time": datetime.now().isoformat()
-            }).execute()
-            st.error("密碼錯誤，若連續錯誤將觸發 10 分鐘保護機制。")
-            st.stop()
+            supabase.table("auth_log").upsert({"session_id": get_user_ip(), "status": False, "last_attempt_time": datetime.now().isoformat()}).execute()
+            st.error("密碼錯誤！")
+    st.stop()
 
 # --- 3. 核心功能 ---
 st.title("🐱 咪姐的永久秘密基地")
+
+if st.button("登出"):
+    cookies.remove("is_authenticated")
+    st.rerun()
+
 model = genai.GenerativeModel("gemini-1.5-flash")
+score = supabase.table("diary").select("id", count='exact').execute().count or 0
 
-# 計算好感度
-try:
-    score = supabase.table("diary").select("id", count='exact').execute().count or 0
-    st.write(f"目前與咪姐的好感度：**{score}** 點")
-except:
-    score = 0
+# 好感度階級顯示
+if score >= 15: rank = "👑 咪姐的專屬奴才"
+elif score >= 6: rank = "🐾 咪姐的朋友"
+else: rank = "🐱 傲嬌路人"
+st.write(f"目前與咪姐的好感度：**{score}** 點 | 階級：**{rank}**")
 
-# 功能區 (拍照、日記)
 uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg"])
 if uploaded_file and st.button("翻譯咪姐心聲"):
-    prompt = f"你是一隻貓咪咪姐，好感度{score}，用傲嬌口吻描述照片。"
+    prompt = f"你是一隻貓咪咪姐，好感度{score}，階級{rank}。用傲嬌口吻描述照片。"
     res = model.generate_content([prompt, uploaded_file.getvalue()])
     st.write(f"### 💬 咪姐說：\n{res.text}")
 
