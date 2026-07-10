@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 import requests
+import random
 from supabase import create_client
 from datetime import datetime, timedelta
 from streamlit_cookies_controller import CookieController 
@@ -46,30 +47,18 @@ if not check_auth_and_cooldown():
     remember_me = st.checkbox(f"記住我 ({st.session_state.expiry_days}天內免登入)")
     
     if st.button("解鎖"):
-        if password == "71398426":
+        if password == "Meow123":
             expiry = st.session_state.expiry_days if remember_me else None
             cookies.set("is_authenticated", "True", max_age=expiry * 24 * 3600 if expiry else None)
-            
-            # 使用 try-except 捕捉寫入錯誤
             try:
-                supabase.table("auth_log").upsert({
-                    "session_id": get_user_ip(), 
-                    "status": True, 
-                    "last_attempt_time": None
-                }).execute()
+                supabase.table("auth_log").upsert({"session_id": get_user_ip(), "status": True, "last_attempt_time": None}).execute()
             except Exception as e:
                 st.error(f"資料庫更新失敗: {e}")
-                st.stop()
             st.rerun()
         else:
             try:
-                supabase.table("auth_log").upsert({
-                    "session_id": get_user_ip(), 
-                    "status": False, 
-                    "last_attempt_time": datetime.now().isoformat()
-                }).execute()
-            except Exception as e:
-                st.error(f"寫入失敗: {e}")
+                supabase.table("auth_log").upsert({"session_id": get_user_ip(), "status": False, "last_attempt_time": datetime.now().isoformat()}).execute()
+            except: pass
             st.error("密碼錯誤！")
     st.stop()
 
@@ -88,51 +77,32 @@ elif score >= 6: rank = "🐾 咪姐的朋友"
 else: rank = "🐱 傲嬌路人"
 st.write(f"目前與咪姐的好感度：**{score}** 點 | 階級：**{rank}**")
 
-uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg"])
-if uploaded_file and st.button("翻譯咪姐心聲"):
-    prompt = f"你是一隻貓咪咪姐，好感度{score}，階級{rank}。用傲嬌口吻描述照片。"
-    res = model.generate_content([prompt, uploaded_file.getvalue()])
-    st.write(f"### 💬 咪姐說：\n{res.text}")
+# 猜拳遊戲
 st.divider()
 st.subheader("🥊 咪姐猜拳大賽")
-st.write("贏了咪姐，好感度加 1！")
-
-# 定義選項
 options = ["剪刀", "石頭", "布"]
 user_choice = st.radio("你出什麼？", options, horizontal=True)
-
 if st.button("確認出拳"):
-    # 讓 Gemini 隨機決定 (透過 Python 的 random 模組)
-    import random
     mi_choice = random.choice(options)
     st.write(f"咪姐出了：**{mi_choice}**")
-    
-    # 判斷勝負
-    win = False
-    if (user_choice == "剪刀" and mi_choice == "布") or \
-       (user_choice == "石頭" and mi_choice == "剪刀") or \
-       (user_choice == "布" and mi_choice == "石頭"):
-        win = True
+    if (user_choice == "剪刀" and mi_choice == "布") or (user_choice == "石頭" and mi_choice == "剪刀") or (user_choice == "布" and mi_choice == "石頭"):
         st.success("🎉 你贏了！咪姐對你好感度提升！")
-    elif user_choice == mi_choice:
-        st.info("平手！再接再厲。")
-    else:
-        st.error("嗚嗚，咪姐贏了！")
-        
-    # 如果贏了，存入資料庫
-    if win:
-        supabase.table("diary").insert({
-            "timestamp": datetime.now().strftime("%m/%d %H:%M"), 
-            "message": "在猜拳中贏過了咪姐，獲得好感度！"
-        }).execute()
-        # 這裡會自動刷新頁面，好感度數字會自動更新
+        supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": "在猜拳中贏過了咪姐，獲得好感度！"}).execute()
         st.rerun()
+    elif user_choice == mi_choice: st.info("平手！再接再厲。")
+    else: st.error("嗚嗚，咪姐贏了！")
+
 st.divider()
+# 顯示日記列表
 st.subheader("📝 罐罐日記")
+with st.container(height=300):
+    for msg in supabase.table("diary").select("*").order("id", desc=True).execute().data:
+        st.caption(f"{msg.get('timestamp')}")
+        st.write(f"💬 {msg.get('message')}")
+        st.divider()
+
+# 輸入區
 new_msg = st.text_input("想對咪姐說什麼？")
 if st.button("獻上敬意") and new_msg:
     supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": new_msg}).execute()
     st.rerun()
-
-for msg in supabase.table("diary").select("*").order("id", desc=True).execute().data:
-    st.write(f"**{msg.get('timestamp')}**: {msg.get('message')}")
