@@ -47,7 +47,7 @@ if not check_auth_and_cooldown():
     remember_me = st.checkbox(f"記住我 ({st.session_state.expiry_days}天內免登入)")
     
     if st.button("解鎖"):
-        if password == "Meow123":
+        if password == "71398426":
             expiry = st.session_state.expiry_days if remember_me else None
             cookies.set("is_authenticated", "True", max_age=expiry * 24 * 3600 if expiry else None)
             try:
@@ -109,7 +109,7 @@ if st.button("獻上敬意") and new_msg:
 # --- 隱藏式管理員入口 ---
 # 讀取網址參數，例如: https://app-tl.streamlit.app/?admin=true
 query_params = st.query_params
-if query_params.get("admin") == "true":
+if query_params.get("tl") =="y":
     
     st.sidebar.divider()
     st.sidebar.subheader("👑 管理員專區")
