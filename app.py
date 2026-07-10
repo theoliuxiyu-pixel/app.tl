@@ -28,11 +28,14 @@ def add_to_diary(message):
         st.error(f"寫入失敗: {e}")
 
 def check_auth_and_cooldown():
+    # 若 Cookie 已認證直接通過
     if cookies.get("is_authenticated") == "True":
         return True
+    
+    # 若 Cookie 無效，檢查資料庫登入狀態
     user_ip = get_user_ip()
     try:
-        res = supabase.table("auth_log").select("status, last_attempt_time").eq("session_id", user_ip).execute()
+        res = supabase.table("auth_log").select("status").eq("session_id", user_ip).execute()
         if len(res.data) > 0 and res.data[0]['status'] == True: return True
     except: pass
     return False
@@ -41,9 +44,18 @@ def check_auth_and_cooldown():
 if not check_auth_and_cooldown():
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼", type="password")
+    remember_me = st.checkbox("保持登入狀態", value=True)
+    
     if st.button("解鎖"):
-        if password == "71398426":
-            cookies.set("is_authenticated", "True", max_age=365 * 24 * 3600)
+        # 從 Secrets 讀取密碼 (若無設定則預設為 Meow123)
+        stored_password = st.secrets.get("LOGIN_PASSWORD", "Meow123")
+        
+        if password == stored_password:
+            if remember_me:
+                cookies.set("is_authenticated", "True", max_age=365 * 24 * 3600)
+            else:
+                cookies.set("is_authenticated", "True")
+            st.success("解鎖成功！")
             st.rerun()
         else:
             st.error("密碼錯誤！")
@@ -75,6 +87,8 @@ with st.popover("😊 送個表情給咪姐"):
     cols1 = st.columns(4)
     for i, emoji in enumerate(["❤️", "✨", "🥰", "🐱"]):
         if cols1[i].button(emoji, key=f"m_{i}"): add_to_diary(f"送給咪姐一個 {emoji}")
+    
+    st.write("---")
     cols2 = st.columns(4)
     for i, emoji in enumerate(["🐟", "💤", "🧶", "🐾"]):
         if cols2[i].button(emoji, key=f"a_{i}"): add_to_diary(f"送給咪姐一個 {emoji}")
