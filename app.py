@@ -3,62 +3,77 @@ import google.generativeai as genai
 from supabase import create_client
 from datetime import datetime, timedelta
 
-# --- 0. 最底層的狀態初始化 (確保不被洗掉) ---
+# --- 0. 設定 ---
+st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
+
+# --- 1. 狀態管理與認證檢查 (最頂層邏輯) ---
+def get_tw_date(): 
+    return (datetime.utcnow() + timedelta(hours=8)).date()
+
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "last_login" not in st.session_state:
     st.session_state.last_login = None
 
-def get_tw_date(): 
-    return (datetime.utcnow() + timedelta(hours=8)).date()
-
-# --- 1. 認證檢查邏輯 (防禦性檢查) ---
-# 只有在明確符合登入條件時才將其視為 True
-def is_logged_in():
-    if not st.session_state.authenticated:
-        return False
-    # 檢查是否跨日
-    if st.session_state.last_login != get_tw_date():
-        st.session_state.authenticated = False
-        st.session_state.last_login = None
-        return False
-    return True
+def check_auth():
+    # 檢查是否認證且日期是否為今日
+    if st.session_state.authenticated and st.session_state.last_login == get_tw_date():
+        return True
+    return False
 
 # --- 2. 登入介面 ---
-if not is_logged_in():
+if not check_auth():
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼", type="password")
     if st.button("解鎖"):
-        if password == "71398426":
+        if password == "Meow123":
             st.session_state.authenticated = True
             st.session_state.last_login = get_tw_date()
             st.rerun()
         else:
             st.error("密碼錯誤")
-    st.stop() # 確保登入成功前，下方程式碼完全不執行
+    st.stop() # 關鍵：認證失敗則停止執行後續功能
 
-# --- 3. 核心功能區 (只有認證成功才到這裡) ---
+# --- 3. 核心功能區 ---
 st.title("🐱 咪姐的永久秘密基地")
+
+# 初始化連線
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# 顯示好感度
+# 計算好感度
 try:
     score = supabase.table("diary").select("id", count='exact').execute().count or 0
     st.write(f"目前與咪姐的好感度：**{score}** 點")
 except:
     score = 0
 
-# (以下維持你原本的拍照與日記功能)
+# 圖片翻譯
+uploaded_file = st.file_uploader("給咪姐拍張照", type=["jpg", "png", "jpeg"])
+if uploaded_file:
+    if st.button("翻譯咪姐心聲"):
+        tone = "溫柔且親暱" if score >= 15 else ("傲嬌但有點害羞" if score >= 6 else "極度傲嬌、毒舌")
+        prompt = f"你是一隻貓咪咪姐，好感度{score}。用{tone}口吻描述照片。格式：【傲嬌指數】：X/10 \n【翻譯心聲】：(描述)"
+        try:
+            response = model.generate_content([prompt, uploaded_file.getvalue()])
+            st.write(f"### 💬 咪姐說：\n{response.text}")
+        except: 
+            st.warning("咪姐現在不想理人，稍後再試。")
+
 # 日記區
 st.divider()
 st.subheader("📝 罐罐日記")
 new_msg = st.text_input("想對咪姐說什麼？")
 if st.button("獻上敬意"):
     if new_msg:
-        supabase.table("diary").insert({"timestamp": datetime.now().strftime("%m/%d %H:%M"), "message": new_msg}).execute()
+        supabase.table("diary").insert({
+            "timestamp": datetime.now().strftime("%m/%d %H:%M"), 
+            "message": new_msg
+        }).execute()
         st.rerun()
 
+# 顯示留言
 data = supabase.table("diary").select("*").order("id", desc=True).execute().data
-for msg in data: st.write(f"**{msg.get('timestamp')}**: {msg.get('message')}")
+for msg in data: 
+    st.write(f"**{msg.get('timestamp')}**: {msg.get('message')}")
