@@ -3,13 +3,15 @@ import google.generativeai as genai
 import requests
 from supabase import create_client
 from datetime import datetime, timedelta
-from streamlit_cookies_controller import Controller
+# --- 修改這裡：修正導入名稱 ---
+from streamlit_cookies_controller import CookieController 
 
 # --- 0. 初始化 ---
 st.set_page_config(page_title="咪姐秘密基地", page_icon="🐱")
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
-cookies = Controller()
+# --- 修改這裡：修正控制器名稱 ---
+cookies = CookieController()
 
 if "expiry_days" not in st.session_state:
     st.session_state.expiry_days = 30
@@ -20,6 +22,7 @@ def get_user_ip():
 
 # --- 1. 認證與冷卻系統 ---
 def check_auth_and_cooldown():
+    # --- 修改這裡：這裡也要確認是用 cookies.get ---
     if cookies.get("is_authenticated") == "True":
         return True
     
@@ -31,8 +34,8 @@ def check_auth_and_cooldown():
         if row['status'] == True: return True
         if row['last_attempt_time']:
             last_time = datetime.fromisoformat(row['last_attempt_time'].replace('Z', '+00:00'))
-            if datetime.now(last_time.tzinfo) - last_time < timedelta(minutes=15):
-                st.error("❌ 嘗試次數過多，IP 已暫時冷卻 15 分鐘。")
+            if datetime.now(last_time.tzinfo) - last_time < timedelta(minutes=10):
+                st.error("❌ 嘗試次數過多，IP 已暫時冷卻 10 分鐘。")
                 st.stop()
     return False
 
@@ -46,7 +49,8 @@ if not check_auth_and_cooldown():
     if st.button("解鎖"):
         if password == "71398426":
             expiry = st.session_state.expiry_days if remember_me else None
-            cookies.set("is_authenticated", "True", expiry_days=expiry)
+            # --- 修改這裡：修正設定方式 ---
+            cookies.set("is_authenticated", "True", max_age=expiry * 24 * 3600 if expiry else None)
             supabase.table("auth_log").upsert({"session_id": get_user_ip(), "status": True, "last_attempt_time": None}).execute()
             st.rerun()
         else:
@@ -64,7 +68,6 @@ if st.button("登出"):
 model = genai.GenerativeModel("gemini-1.5-flash")
 score = supabase.table("diary").select("id", count='exact').execute().count or 0
 
-# 好感度階級顯示
 if score >= 15: rank = "👑 咪姐的專屬奴才"
 elif score >= 6: rank = "🐾 咪姐的朋友"
 else: rank = "🐱 傲嬌路人"
