@@ -14,7 +14,7 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
     st.session_state.last_login_date = None
 
-# --- 1. 認證檢查 ---
+# --- 1. 認證邏輯 ---
 def check_auth():
     if not st.session_state.authenticated: return False
     if st.session_state.last_login_date != get_tw_date():
@@ -26,14 +26,14 @@ if not check_auth():
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼", type="password")
     if st.button("解鎖"):
-        if password == "71398426":
+        if password == "7139426":
             st.session_state.authenticated = True
             st.session_state.last_login_date = get_tw_date()
             st.rerun()
         else: st.error("密碼錯誤")
     st.stop()
 
-# --- 2. 核心功能與資料庫 ---
+# --- 2. 核心功能 ---
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 genai.configure(api_key=st.secrets["API_KEY"])
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -46,36 +46,29 @@ def get_loyalty_score():
 
 score = get_loyalty_score()
 
-# --- 3. UI 美化與風格 (對比度優化) ---
+# --- 3. 強制覆蓋式 CSS ---
 def apply_theme(s):
-    # 設定色盤
     if s < 6: bg, txt, btn = "#f0f0f0", "#212529", "#333333"
     elif s < 15: bg, txt, btn = "#faedcd", "#5f4339", "#d4a373"
     else: bg, txt, btn = "#ffebf0", "#880e4f", "#ffafcc"
         
-    # 加入 unsafe_allow_html=True 並確保 CSS 樣式完整
     st.markdown(f"""
         <style>
-        [data-testid="stAppViewContainer"] {{
+        /* 強制設定背景顏色 */
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stMainBlockContainer"] {{
             background-color: {bg} !important;
         }}
-        h1, h2, h3, p, label, .stMarkdown, .stText {{
-            color: {txt} !important;
-        }}
-        div.stButton > button {{
-            background-color: {btn} !important;
-            color: white !important;
-        }}
-        [data-testid="stFileUploadDropzone"] {{
-            background-color: rgba(255, 255, 255, 0.3) !important;
-            border: 2px dashed {txt} !important;
-        }}
+        /* 文字與元件色彩 */
+        h1, h2, h3, p, label, .stMarkdown, .stText, .stTextInput {{ color: {txt} !important; }}
+        div.stButton > button {{ background-color: {btn} !important; color: white !important; border: none; }}
+        [data-testid="stFileUploadDropzone"] {{ border: 2px dashed {txt} !important; background: rgba(255,255,255,0.2); }}
+        input {{ border: 1px solid {txt} !important; color: {txt} !important; }}
         </style>
     """, unsafe_allow_html=True)
 
 apply_theme(score)
 
-# --- 4. 頁面內容 ---
+# --- 4. 頁面顯示 ---
 st.title("🐱 咪姐的永久秘密基地")
 st.write(f"與咪姐的好感度：**{score}** 點")
 
