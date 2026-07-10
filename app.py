@@ -42,7 +42,7 @@ if not check_auth_and_cooldown():
     st.title("🔒 咪姐秘密基地")
     password = st.text_input("輸入密碼", type="password")
     if st.button("解鎖"):
-        if password == "Meow123":
+        if password == "71398426":
             cookies.set("is_authenticated", "True", max_age=365 * 24 * 3600)
             st.rerun()
         else:
